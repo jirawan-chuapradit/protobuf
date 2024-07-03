@@ -15,7 +15,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s := chat.Server{}
+	s := chat.Server{} 
 	grpcServer := grpc.NewServer()
 	
 
