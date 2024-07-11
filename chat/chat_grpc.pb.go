@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.4.0
 // - protoc             v5.27.1
-// source: chat.proto
+// source: proto/chat.proto
 
 package chat
 
@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	ChatService_SayHello_FullMethodName = "/chat.ChatService/SayHello"
+	ChatService_SayHello_FullMethodName   = "/chat.ChatService/SayHello"
+	ChatService_StreamData_FullMethodName = "/chat.ChatService/StreamData"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatServiceClient interface {
 	SayHello(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Message, error)
+	StreamData(ctx context.Context, in *StreamDataRequest, opts ...grpc.CallOption) (ChatService_StreamDataClient, error)
 }
 
 type chatServiceClient struct {
@@ -47,11 +49,45 @@ func (c *chatServiceClient) SayHello(ctx context.Context, in *Message, opts ...g
 	return out, nil
 }
 
+func (c *chatServiceClient) StreamData(ctx context.Context, in *StreamDataRequest, opts ...grpc.CallOption) (ChatService_StreamDataClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[0], ChatService_StreamData_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &chatServiceStreamDataClient{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ChatService_StreamDataClient interface {
+	Recv() (*StreamDataResponse, error)
+	grpc.ClientStream
+}
+
+type chatServiceStreamDataClient struct {
+	grpc.ClientStream
+}
+
+func (x *chatServiceStreamDataClient) Recv() (*StreamDataResponse, error) {
+	m := new(StreamDataResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility
 type ChatServiceServer interface {
 	SayHello(context.Context, *Message) (*Message, error)
+	StreamData(*StreamDataRequest, ChatService_StreamDataServer) error
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -61,6 +97,9 @@ type UnimplementedChatServiceServer struct {
 
 func (UnimplementedChatServiceServer) SayHello(context.Context, *Message) (*Message, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+}
+func (UnimplementedChatServiceServer) StreamData(*StreamDataRequest, ChatService_StreamDataServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamData not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 
@@ -93,6 +132,27 @@ func _ChatService_SayHello_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_StreamData_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamDataRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).StreamData(m, &chatServiceStreamDataServer{ServerStream: stream})
+}
+
+type ChatService_StreamDataServer interface {
+	Send(*StreamDataResponse) error
+	grpc.ServerStream
+}
+
+type chatServiceStreamDataServer struct {
+	grpc.ServerStream
+}
+
+func (x *chatServiceStreamDataServer) Send(m *StreamDataResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -105,6 +165,12 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_SayHello_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "chat.proto",
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamData",
+			Handler:       _ChatService_StreamData_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "proto/chat.proto",
 }

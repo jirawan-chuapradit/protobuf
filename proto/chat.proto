@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "/chat";
+
+
+package chat;
+
+message Message{
+    string body = 1;
+}
+
+
+message StreamDataRequest {
+    string message = 1;
+  }
+  
+  message StreamDataResponse {
+    string data = 1;
+  }
+
+service ChatService{
+    rpc SayHello(Message) returns (Message){}
+    rpc StreamData(StreamDataRequest) returns (stream StreamDataResponse){}
+}
