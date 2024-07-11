@@ -1,23 +1,21 @@
 package main
 
 import (
-	"net"
 	"log"
-	"google.golang.org/grpc"
+	"net"
 	"test_protobuf/chat"
+
+	"google.golang.org/grpc"
 )
 
-
-
 func main() {
-	listener, err := net.Listen("tcp",":9000")
+	listener, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	s := chat.Server{} 
+	s := chat.Server{}
 	grpcServer := grpc.NewServer()
-	
 
 	chat.RegisterChatServiceServer(grpcServer, &s)
 
